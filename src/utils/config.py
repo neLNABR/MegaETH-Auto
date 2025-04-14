@@ -33,7 +33,10 @@ class FlowConfig:
 class FaucetConfig:
     SOLVIUM_API_KEY: str
     USE_CAPSOLVER: bool
+    WHICH_ONE: str
     CAPSOLVER_API_KEY: str
+    YESCAPTCHA_API_KEY: str
+    TWOCAPTCHA_API_KEY: str
 
 
 @dataclass
@@ -201,7 +204,10 @@ class Config:
             FAUCET=FaucetConfig(
                 SOLVIUM_API_KEY=data["FAUCET"]["SOLVIUM_API_KEY"],
                 USE_CAPSOLVER=data["FAUCET"]["USE_CAPSOLVER"],
+                WHICH_ONE=data["FAUCET"]["WHICH_ONE"],
                 CAPSOLVER_API_KEY=data["FAUCET"]["CAPSOLVER_API_KEY"],
+                YESCAPTCHA_API_KEY=data["FAUCET"]["YESCAPTCHA_API_KEY"],
+                TWOCAPTCHA_API_KEY=data["FAUCET"]["TWOCAPTCHA_API_KEY"],
             ),
             RPCS=RpcsConfig(
                 MEGAETH=data["RPCS"]["MEGAETH"],

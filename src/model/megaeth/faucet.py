@@ -2,7 +2,7 @@ import asyncio
 from loguru import logger
 import random
 import primp
-from src.model.help.captcha import Capsolver, Solvium
+from src.model.help.captcha import Capsolver, Solvium, YesCaptcha, TwoCaptcha
 from src.utils.config import Config
 from eth_account import Account
 import hashlib
@@ -28,7 +28,7 @@ async def faucet(
             f"[{account_index}] | Starting faucet for account {wallet.address}..."
         )
 
-        if config.FAUCET.USE_CAPSOLVER:
+        if config.FAUCET.WHICH_ONE == "CAPSOLVER":
             logger.info(
                 f"[{account_index}] | Solving Cloudflare challenge with Capsolver..."
             )
@@ -41,7 +41,7 @@ async def faucet(
                 "0x4AAAAAABA4JXCaw9E2Py-9",
                 "https://testnet.megaeth.com/",
             )
-        else:
+        elif config.FAUCET.WHICH_ONE == "SOLVIUM":
             logger.info(
                 f"[{account_index}] | Solving Cloudflare challenge with Solvium..."
             )
@@ -52,6 +52,37 @@ async def faucet(
             )
             
             result = await solvium.solve_captcha(
+                sitekey="0x4AAAAAABA4JXCaw9E2Py-9",
+                pageurl="https://testnet.megaeth.com/",
+            )
+            cf_result = result
+        elif config.FAUCET.WHICH_ONE == "YESCAPTCHA":
+            logger.info(
+                f"[{account_index}] | Solving Cloudflare challenge with YesCaptcha..."
+            )
+
+            yescaptcha = YesCaptcha(
+                api_key=config.FAUCET.YESCAPTCHA_API_KEY,
+                session=session,
+                proxy=proxy,
+            )
+
+            result = await yescaptcha.solve_captcha(
+                sitekey="0x4AAAAAABA4JXCaw9E2Py-9",
+                pageurl="https://testnet.megaeth.com/",
+            )
+            cf_result = result
+        elif config.FAUCET.WHICH_ONE == "TWOCAPTCHA":
+            logger.info(
+                f"[{account_index}] | Solving Cloudflare challenge with TwoCaptcha..."
+            )
+            twocaptcha = TwoCaptcha(
+                api_key=config.FAUCET.TWOCAPTCHA_API_KEY,
+                session=session,
+                proxy=proxy,
+            )
+
+            result = await twocaptcha.solve_turnstile(
                 sitekey="0x4AAAAAABA4JXCaw9E2Py-9",
                 pageurl="https://testnet.megaeth.com/",
             )

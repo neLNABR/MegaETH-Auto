@@ -411,3 +411,118 @@ class Solvium:
             return None
 
         return await self.get_task_result(task_id)
+        
+class YesCaptcha:
+    def __init__(
+            self,
+            api_key: str,
+            session: AsyncClient,
+            proxy: Optional[str] = None,
+
+    ):
+        self.api_key = api_key
+        self.proxy = proxy
+        self.base_url = "https://api.yescaptcha.com"
+        self.session = session
+        # 验证码类型：
+        self.task_type = "NoCaptchaTaskProxyless"
+
+    def _format_proxy(self, proxy: str) -> str:
+        if not proxy:
+            return None
+        if "@" in proxy:
+            return proxy
+        return f"http://{proxy}"
+
+    async def create_turnstile_task(self, sitekey: str, pageurl: str) -> Optional[str]:
+        """Creates a YesCaptcha captcha  task"""
+        data = {
+            "clientKey": self.api_key,
+            "task": {
+                "websiteURL": pageurl,
+                "websiteKey": sitekey,
+                "type": self.task_type
+            }
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        url = f"{self.base_url}/createTask"
+
+        # if self.proxy:
+        #     formatted_proxy = self._format_proxy(self.proxy)
+        #     url += f"&proxy={formatted_proxy}"
+
+        try:
+            response = await self.session.post(url, json=data)
+            result = response.json()
+
+            logger.info(f"YesCaptcha post create_turnstile_task: {result}")
+
+            if result.get("taskId") is not None:
+                return result["taskId"]
+
+            logger.error(f"Error creating Turnstile task with YesCaptcha: {result}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error creating Turnstile task with YesCaptcha: {e}")
+            return None
+
+    async def get_task_result(self, task_id: str) -> Optional[str]:
+        """Gets the result of the captcha solution"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        max_attempts = 30
+        for _ in range(max_attempts):
+            try:
+                url = f"{self.base_url}/getTaskResult"
+
+                data = {
+                    "clientKey": self.api_key,
+                    "taskId": task_id
+                }
+                response = await self.session.post(
+                    url,
+                    json=data,
+                )
+
+                result = response.json()
+                logger.info(f"YesCaptcha post get_task_result: {result}")
+                solution = result.get('solution', {})
+
+                # Проверяем статус задачи
+                if solution:
+                    response = solution.get('gRecaptchaResponse')
+                    if response:
+                        return response
+                    else:
+                        logger.error(f"Invalid solution format from YesCaptcha: {solution}")
+                        return None
+                elif result.get("status") == "running" or result.get("status") == "processing":
+                    # Задача еще выполняется, ждем
+                    await asyncio.sleep(5)
+                    continue
+                else:
+                    # Ошибка или неизвестный статус
+                    logger.error(f"Error getting result with Solvium: {result}")
+                    return None
+
+            except Exception as e:
+                logger.error(f"Error getting result with Solvium: {e}")
+                return None
+
+        logger.error("Max polling attempts reached without getting a result with YesCaptcha")
+        return None
+
+    async def solve_captcha(self, sitekey: str, pageurl: str) -> Optional[str]:
+        """YesCaptcha Cloudflare Turnstile captcha and returns token"""
+        task_id = await self.create_turnstile_task(sitekey, pageurl)
+        if not task_id:
+            return None
+
+        return await self.get_task_result(task_id)
